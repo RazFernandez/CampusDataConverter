@@ -1,5 +1,8 @@
 package org.jsoncsvconverter.UI;
 
+import org.json.JSONObject;
+import org.jsoncsvconverter.Logic.JsonFileReader;
+
 import javax.swing.*;
 import java.awt.event.*;
 import javax.swing.filechooser.FileNameExtensionFilter;
@@ -8,6 +11,9 @@ import java.awt.*;
 public class CampusDataConverterUI extends javax.swing.JFrame implements ActionListener{
 
     private JButton uploadJsonFileBtn, selectOutputLocationBtn;
+
+    // Created instance of JsonFileReader
+    private JsonFileReader jsonFileReader;
 
     public CampusDataConverterUI(){
         setLayout(null);
@@ -44,7 +50,20 @@ public class CampusDataConverterUI extends javax.swing.JFrame implements ActionL
             int result = fileChooser.showOpenDialog(this);
             if (result == JFileChooser.APPROVE_OPTION) {
                 String selectedFilePath = fileChooser.getSelectedFile().getAbsolutePath();
-                JOptionPane.showMessageDialog(this, "Selected: " + selectedFilePath);
+
+                // Opens the file selected in UI
+                jsonFileReader = new JsonFileReader(selectedFilePath);
+                System.out.println(jsonFileReader.getJsonString());
+
+                // Save the JSON object into
+                String jsonString = jsonFileReader.getJsonString();
+
+                // Retrieves a value key for testing purposes
+                JSONObject jsonObject = new JSONObject(jsonString);
+                String type = jsonObject.getString("name");
+
+                System.out.println(type);
+
             }
         }
     }
