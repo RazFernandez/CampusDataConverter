@@ -1,6 +1,8 @@
 package org.jsoncsvconverter.UI;
+import java.util.*;
 
 import org.json.JSONObject;
+import org.jsoncsvconverter.Logic.JSONParser;
 import org.jsoncsvconverter.Logic.JsonFileReader;
 
 import javax.swing.*;
@@ -60,9 +62,13 @@ public class CampusDataConverterUI extends javax.swing.JFrame implements ActionL
 
                 // Retrieves a value key for testing purposes
                 JSONObject jsonObject = new JSONObject(jsonString);
-                String type = jsonObject.getString("name");
 
-                System.out.println(type);
+                // Instance of JSONParser
+                JSONParser parser = new JSONParser();
+                parser.extractHeadersFromObject(jsonObject);
+
+                System.out.println("Headers (List): " + parser.getHeaders());
+                System.out.println("Headers (Array): " + Arrays.toString(parser.getHeadersArray()));
 
             }
         }
