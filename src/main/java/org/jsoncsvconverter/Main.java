@@ -1,4 +1,6 @@
 package org.jsoncsvconverter;
+import org.jsoncsvconverter.UI.CampusDataConverterUI;
+
 import java.io.FileReader;
 import java.io.IOException;
 
@@ -6,9 +8,10 @@ import java.io.IOException;
 
 public class Main {
     public static void main(String[] args) {
-        JsonFileReader reader = new JsonFileReader("text.json");
-//        reader.printFileContent();
-        String jsonData = reader.getJsonString();
-        System.out.println(jsonData);
+        CampusDataConverterUI campusUI = new CampusDataConverterUI();
+        campusUI.setBounds(0, 0, 600, 800);
+        campusUI.setVisible(true);
+        campusUI.setLocationRelativeTo(null);
+        campusUI.setResizable(true);
     }
 }
