@@ -62,17 +62,14 @@ public class CampusDataConverterUI extends javax.swing.JFrame implements ActionL
                 String jsonString = jsonFileReader.getJsonString();
 
                 // Retrieves a value key for testing purposes
-                JSONObject jsonObject = new JSONObject(jsonString);
-
-                // Instance of JSONParser
-                JSONParser parser = new JSONParser();
-                parser.extractHeadersFromObject(jsonObject);
+                JSONParser parser = new JSONParser(jsonString);
 
                 System.out.println("Headers (List): " + parser.getHeaders());
                 System.out.println("Headers (Array): " + Arrays.toString(parser.getHeadersArray()));
 
                 CSVWriterFile csvWriterFile = new CSVWriterFile(parser.getHeadersArray());
                 csvWriterFile.createNewCSVFile("C:\\Users\\migue\\Desktop\\Test\\createdfiles\\hola.csv");
+
             }
         }
     }
