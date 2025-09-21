@@ -12,6 +12,6 @@ public class Main {
         campusUI.setBounds(0, 0, 600, 800);
         campusUI.setVisible(true);
         campusUI.setLocationRelativeTo(null);
-        campusUI.setResizable(true);
+        campusUI.setResizable(false);
     }
 }
