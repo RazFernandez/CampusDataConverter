@@ -1,7 +1,6 @@
 package org.jsoncsvconverter.UI;
 import java.util.*;
 
-import org.json.JSONObject;
 import org.jsoncsvconverter.Logic.CSVWriterFile;
 import org.jsoncsvconverter.Logic.JSONParser;
 import org.jsoncsvconverter.Logic.JsonFileReader;
@@ -68,7 +67,9 @@ public class CampusDataConverterUI extends javax.swing.JFrame implements ActionL
                 System.out.println("Headers (Array): " + Arrays.toString(parser.getHeadersArray()));
 
                 CSVWriterFile csvWriterFile = new CSVWriterFile(parser.getHeadersArray());
-                csvWriterFile.createNewCSVFile("C:\\Users\\migue\\Desktop\\Test\\createdfiles\\hola.csv");
+                csvWriterFile.createCSVWithData("C:\\Users\\migue\\Desktop\\Test\\createdfiles\\hola.csv",
+                        parser.getRows());
+                //csvWriterFile.createNewCSVFile("C:\\Users\\migue\\Desktop\\Test\\createdfiles\\hola.csv");
 
             }
         }
