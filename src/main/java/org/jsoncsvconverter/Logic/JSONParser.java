@@ -1,109 +1,198 @@
 package org.jsoncsvconverter.Logic;
 
-import org.json.JSONArray;
-import org.json.JSONObject;
-
+import com.google.gson.*;
 import java.util.*;
 
-/**
- * Extracts flat headers (keys) from JSON structures.
- * - Only leaf keys are added (primitive values or nulls).
- * - Nested keys are flattened with underscore separators:
- *     contact -> email  -> contact_email
- *     projects -> details -> budget -> projects_details_budget
- * - Order follows first-seen discovery using a LinkedHashSet.
- */
 public class JSONParser {
+    private final JsonObject jsonObject;
     private final Set<String> headers = new LinkedHashSet<>();
+    private final List<String[]> rows = new ArrayList<>();
 
-    /**
-     * Clear existing headers so the parser can be reused.
-     */
-    public void clearHeaders() {
-        headers.clear();
+    public JSONParser(String jsonString) {
+        this.jsonObject = JsonParser.parseString(jsonString).getAsJsonObject();
+        processJson();
     }
 
-    /**
-     * Add a single header (internal use).
-     */
-    private void addHeader(String header) {
-        headers.add(header);
-    }
-
-    /**
-     * Public entry point: extract headers from a JSONObject (no prefix).
-     */
-    public void extractHeadersFromObject(JSONObject jsonObject) {
-        extractHeadersFromObject(jsonObject, "");
-    }
-
-    /**
-     * Recursive extractor for JSONObject.
-     * - If value is a primitive (String, Number, boolean, JSONObject.NULL), add the header.
-     * - If value is JSONObject, recurse with prefix.
-     * - If value is JSONArray, recurse into array elements with the same prefix.
-     */
-    private void extractHeadersFromObject(JSONObject jsonObject, String prefix) {
-        for (String key : jsonObject.keySet()) {
-            Object value = jsonObject.get(key);
-            String fullKey = prefix.isEmpty() ? key : prefix + "_" + key;
-
-            if (value instanceof JSONObject) {
-                // Do NOT add the parent key itself; go deeper so we only add leaf keys.
-                extractHeadersFromObject((JSONObject) value, fullKey);
-            } else if (value instanceof JSONArray) {
-                // For arrays, inspect elements; we don't add the array name as a header
-                // unless the array contains primitive elements (handled in the array method).
-                extractHeadersFromArray((JSONArray) value, fullKey);
-            } else {
-                // Primitive or null: this is a leaf value -> add header
-                addHeader(fullKey);
+    private void processJson() {
+        List<Map<String, String>> flattenedRows = flattenJson(jsonObject, "");
+        for (Map<String, String> row : flattenedRows) {
+            headers.addAll(row.keySet());
+        }
+        for (Map<String, String> row : flattenedRows) {
+            List<String> rowValues = new ArrayList<>();
+            for (String header : headers) {
+                rowValues.add(row.getOrDefault(header, ""));
             }
+            rows.add(rowValues.toArray(new String[0]));
         }
     }
 
-    /**
-     * Recursive extractor for JSONArray.
-     * - If elements are objects, recurse into each element using the provided prefix.
-     * - If elements are arrays, recurse further.
-     * - If elements are primitive values, add the prefix as a header once (e.g. "tags").
-     */
-    private void extractHeadersFromArray(JSONArray jsonArray, String prefix) {
-        if (jsonArray.isEmpty()) {
-            // If array is empty, we don't know element structure, skip adding header.
-            return;
-        }
+    // Recursive flattener
+    private List<Map<String, String>> flattenJson(JsonElement element, String prefix) {
+        List<Map<String, String>> result = new ArrayList<>();
 
-        for (int i = 0; i < jsonArray.length(); i++) {
-            Object element = jsonArray.get(i);
+        if (element.isJsonObject()) {
+            JsonObject obj = element.getAsJsonObject();
 
-            if (element instanceof JSONObject) {
-                // Recurse into the object element using same prefix.
-                extractHeadersFromObject((JSONObject) element, prefix);
-            } else if (element instanceof JSONArray) {
-                // Nested arrays: recurse with same prefix.
-                extractHeadersFromArray((JSONArray) element, prefix);
-            } else {
-                // Primitive element (String, Number, boolean, or null)
-                // Use the prefix as the header (add once).
-                addHeader(prefix);
-                // If array contains primitives, adding once is enough — break to avoid duplicates.
-                break;
+            // Separate different types of fields
+            Map<String, List<String>> primitiveArrays = new LinkedHashMap<>();
+            List<String> objectArrayKeys = new ArrayList<>();
+            Map<String, String> scalarData = new LinkedHashMap<>();
+
+            for (Map.Entry<String, JsonElement> entry : obj.entrySet()) {
+                String key = entry.getKey();
+                JsonElement value = entry.getValue();
+                String newPrefix = prefix.isEmpty() ? key : prefix + "__" + key;
+
+                if (value.isJsonArray()) {
+                    JsonArray arr = value.getAsJsonArray();
+                    if (!arr.isEmpty() && arr.get(0).isJsonPrimitive()) {
+                        // This is a primitive array
+                        List<String> arrayValues = new ArrayList<>();
+                        for (JsonElement item : arr) {
+                            arrayValues.add(item.getAsString());
+                        }
+                        primitiveArrays.put(newPrefix, arrayValues);
+                    } else {
+                        // This is an object array - handle separately
+                        objectArrayKeys.add(key);
+                    }
+                } else {
+                    // Handle scalar elements (objects, primitives, null)
+                    List<Map<String, String>> childRows = flattenJson(value, newPrefix);
+                    for (Map<String, String> childRow : childRows) {
+                        scalarData.putAll(childRow);
+                    }
+                }
             }
+
+            // First, handle object arrays - each creates its own set of rows
+            List<Map<String, String>> objectArrayRows = new ArrayList<>();
+            for (String arrayKey : objectArrayKeys) {
+                JsonArray arr = obj.get(arrayKey).getAsJsonArray();
+                String newPrefix = prefix.isEmpty() ? arrayKey : prefix + "__" + arrayKey;
+
+                for (JsonElement item : arr) {
+                    List<Map<String, String>> itemRows = flattenJson(item, newPrefix);
+                    objectArrayRows.addAll(itemRows);
+                }
+            }
+
+            // If we have object array rows, we need to merge them with scalar data and primitive arrays
+            if (!objectArrayRows.isEmpty()) {
+                // Each object array row needs to be combined with scalar data and primitive arrays
+                for (int i = 0; i < objectArrayRows.size(); i++) {
+                    Map<String, String> finalRow = new LinkedHashMap<>();
+
+                    // Add scalar data only to the first row
+                    if (i == 0) {
+                        finalRow.putAll(scalarData);
+                    }
+
+                    // Add the object array data
+                    finalRow.putAll(objectArrayRows.get(i));
+
+                    result.add(finalRow);
+                }
+
+                // Now handle primitive arrays - they create additional rows
+                int maxPrimitiveArrayLength = 0;
+                for (List<String> arrayValues : primitiveArrays.values()) {
+                    maxPrimitiveArrayLength = Math.max(maxPrimitiveArrayLength, arrayValues.size());
+                }
+
+                for (int i = 0; i < maxPrimitiveArrayLength; i++) {
+                    Map<String, String> rowMap = new LinkedHashMap<>();
+
+                    // Add primitive array elements at this index
+                    for (Map.Entry<String, List<String>> arrayEntry : primitiveArrays.entrySet()) {
+                        String arrayKey = arrayEntry.getKey();
+                        List<String> arrayValues = arrayEntry.getValue();
+
+                        if (i < arrayValues.size()) {
+                            rowMap.put(arrayKey, arrayValues.get(i));
+                        }
+                    }
+
+                    result.add(rowMap);
+                }
+
+            } else {
+                // No object arrays, handle primitive arrays normally
+                int maxArrayLength = 0;
+                for (List<String> arrayValues : primitiveArrays.values()) {
+                    maxArrayLength = Math.max(maxArrayLength, arrayValues.size());
+                }
+
+                if (maxArrayLength > 0) {
+                    // Create rows: one row per index across all primitive arrays
+                    for (int i = 0; i < maxArrayLength; i++) {
+                        Map<String, String> rowMap = new LinkedHashMap<>();
+
+                        // Add scalar data only to the first row
+                        if (i == 0) {
+                            rowMap.putAll(scalarData);
+                        }
+
+                        // Add primitive array elements at this index
+                        for (Map.Entry<String, List<String>> arrayEntry : primitiveArrays.entrySet()) {
+                            String arrayKey = arrayEntry.getKey();
+                            List<String> arrayValues = arrayEntry.getValue();
+
+                            if (i < arrayValues.size()) {
+                                rowMap.put(arrayKey, arrayValues.get(i));
+                            }
+                        }
+
+                        result.add(rowMap);
+                    }
+                } else {
+                    // No arrays at all, just return the scalar data
+                    result.add(scalarData);
+                }
+            }
+
+        } else if (element.isJsonArray()) {
+            JsonArray arr = element.getAsJsonArray();
+
+            // Check if array is of primitives or objects
+            if (!arr.isEmpty() && arr.get(0).isJsonPrimitive()) {
+                // For primitive arrays, create one row per array element
+                for (JsonElement item : arr) {
+                    Map<String, String> map = new LinkedHashMap<>();
+                    map.put(prefix, item.getAsString());
+                    result.add(map);
+                }
+            } else {
+                // For object arrays, flatten each object and create separate rows
+                for (JsonElement item : arr) {
+                    result.addAll(flattenJson(item, prefix));
+                }
+            }
+
+        } else if (element.isJsonPrimitive() || element.isJsonNull()) {
+            Map<String, String> map = new LinkedHashMap<>();
+            map.put(prefix, element.isJsonNull() ? "" : element.getAsString());
+            result.add(map);
         }
+
+        return result;
     }
 
-    /**
-     * Get headers as an unmodifiable List (safe to return to callers).
-     */
-    public List<String> getHeaders() {
-        return Collections.unmodifiableList(new ArrayList<>(headers));
+    // Getters
+    public Set<String> getHeaders() {
+        return headers;
     }
 
-    /**
-     * Get headers as an array for libraries like OpenCSV.
-     */
     public String[] getHeadersArray() {
         return headers.toArray(new String[0]);
+    }
+
+    public List<String[]> getRows() {
+        return rows;
+    }
+
+    public JsonObject getJsonObject() {
+        return jsonObject;
     }
 }
