@@ -1,9 +1,5 @@
 package org.jsoncsvconverter;
-import org.jsoncsvconverter.Logic.JsonFileReader;
 import org.jsoncsvconverter.UI.CampusDataConverterUI;
-
-import java.io.FileReader;
-import java.io.IOException;
 
 // Entry point for JSON converter to CSV application
 
