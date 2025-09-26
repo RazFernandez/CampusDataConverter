@@ -119,12 +119,13 @@ src/test/java/
 **Rationale:** Separates concerns, enables easier maintenance, allows focused development on specific components without creating tightly coupled code.
 
 ## 📚 Documentation
-All classes include comprehensive **JavaDoc documentation** covering:
-- **Class purpose and functionality**
-- **Method parameters and return values**
-- **Usage examples and best practices**
-- **Exception handling and error scenarios**
-- **Cross-references to related components**
+Here is a list of resources that documents the implementation of this code.
+1) Flowchart: [Link🔗](https://drive.google.com/file/d/1ZHUcUtuwWHyt28agMgQo_4cuuU3Sj6kT/view?usp=sharing)
+2) Explanation of parsing algorithm: [Link🔗](https://github.com/RazFernandez/CampusDataConverter/blob/main/Docs/algorithm_explanation.md)
+3) User manual: [Link🔗](https://github.com/RazFernandez/CampusDataConverter/blob/main/Docs/user_manual.md)
+4) Backlog: [link🔗](https://github.com/users/RazFernandez/projects/5/views/3)
+5) Roadmap: [link🔗](https://github.com/users/RazFernandez/projects/5/views/1)
+6) Reflexion: [link🔗](https://github.com/RazFernandez/CampusDataConverter/blob/main/Docs/reflexion.md)
 
 ## 🧪 Testing Strategy
 Comprehensive **JUnit 3.8.1** test suite covering:
